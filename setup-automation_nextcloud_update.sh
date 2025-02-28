@@ -1,52 +1,62 @@
 #!/bin/bash
 
-# Definição de variáveis
-BACKUP_SCRIPT="/root/shutdown-script.sh"
-UPDATE_SCRIPT="/root/automatic-updates.sh"
-LOG_FILE="/var/log/container-maintenance.log"
-CRON_JOB_BACKUP="0 4 * * * /root/shutdown-script.sh >> /var/log/container-maintenance.log 2>&1"
-CRON_JOB_UPDATE="5 4 * * * /root/automatic-updates.sh >> /var/log/container-maintenance.log 2>&1"
+LOG_FILE="/var/log/nextcloud_aio_automation.log"
+SCRIPT_PATH="/root/nextcloud_aio_automation.sh"
+CRON_JOB="0 4 * * * /root/nextcloud_aio_automation.sh >> /var/log/nextcloud_aio_automation.log 2>&1"
 
-# Criando o script de backup e desligamento
-cat <<EOF > $BACKUP_SCRIPT
+echo "---- Configurando automação Nextcloud AIO ----" | tee -a "$LOG_FILE"
+
+# Criar uma cópia local do script
+cat << 'EOF' > "$SCRIPT_PATH"
 #!/bin/bash
 
-echo "\$(date) - Iniciando backup e parada dos containers" >> $LOG_FILE
+LOG_FILE="/var/log/nextcloud_aio_automation.log"
+echo "---- Iniciando automação Nextcloud AIO ----" | tee -a "$LOG_FILE"
+
+echo "[1/3] Parando os containers..." | tee -a "$LOG_FILE"
 docker exec --env STOP_CONTAINERS=1 nextcloud-aio-mastercontainer /daily-backup.sh
-echo "\$(date) - Containers parados. Backup concluído." >> $LOG_FILE
-EOF
 
-# Criando o script de atualização automática
-cat <<EOF > $UPDATE_SCRIPT
-#!/bin/bash
+# Aguarde até que todos os containers, exceto o mastercontainer, sejam parados
+TIMEOUT=300  # Tempo máximo de espera (5 minutos)
+INTERVAL=10  # Intervalo de verificação (10 segundos)
+WAIT_TIME=0
 
-echo "\$(date) - Verificando se os containers foram parados..." >> $LOG_FILE
-
-# Aguarda até que os containers estejam parados ou até 5 minutos
-TIMER=0
-while docker ps --format "{{.Names}}" | grep -q "^nextcloud-aio-mastercontainer$"; do
-    if [[ \$TIMER -ge 300 ]]; then
-        echo "\$(date) - Tempo máximo de espera atingido. Continuando a atualização." >> $LOG_FILE
-        break
+while docker ps --format "{{.Names}}" | grep -v "^nextcloud-aio-mastercontainer$" | grep -q .; do
+    if [ "$WAIT_TIME" -ge "$TIMEOUT" ]; then
+        echo "[ERRO] Tempo limite atingido! Alguns containers ainda estão rodando." | tee -a "$LOG_FILE"
+        exit 1
     fi
-    echo "\$(date) - Containers ainda em execução. Aguardando..." >> $LOG_FILE
-    sleep 10
-    TIMER=\$((TIMER + 10))
+    echo "Aguardando containers pararem... ($WAIT_TIME segundos)" | tee -a "$LOG_FILE"
+    sleep "$INTERVAL"
+    WAIT_TIME=$((WAIT_TIME + INTERVAL))
 done
 
-echo "\$(date) - Iniciando atualização dos containers." >> $LOG_FILE
-docker exec --env AUTOMATIC_UPDATES=1 nextcloud-aio-mastercontainer /daily-backup.sh
-echo "\$(date) - Atualização concluída." >> $LOG_FILE
+echo "[2/3] Todos os containers (exceto o master) foram parados! Iniciando atualização..." | tee -a "$LOG_FILE"
+
+# Executa a atualização
+if ! docker exec --env AUTOMATIC_UPDATES=1 nextcloud-aio-mastercontainer /daily-backup.sh; then
+    echo "[ERRO] Falha na primeira tentativa de atualização. Tentando novamente..." | tee -a "$LOG_FILE"
+
+    # Espera o mastercontainer reiniciar, se necessário
+    while ! docker ps --format "{{.Names}}" | grep -q "^nextcloud-aio-mastercontainer$"; do
+        echo "Aguardando Mastercontainer reiniciar..." | tee -a "$LOG_FILE"
+        sleep 30
+    done
+    
+    echo "[3/3] Rodando atualização novamente para garantir que tudo foi atualizado corretamente." | tee -a "$LOG_FILE"
+    docker exec --env AUTOMATIC_UPDATES=1 nextcloud-aio-mastercontainer /daily-backup.sh
+fi
+
+echo "---- Automação Nextcloud AIO concluída! ----" | tee -a "$LOG_FILE"
 EOF
 
-# Aplicando permissões corretas aos scripts
-chmod 700 $BACKUP_SCRIPT $UPDATE_SCRIPT
-chown root:root $BACKUP_SCRIPT $UPDATE_SCRIPT
+# Aplicar permissões corretas ao script
+chmod +x "$SCRIPT_PATH"
+echo "Script salvo em $SCRIPT_PATH" | tee -a "$LOG_FILE"
 
-# Configurando as tarefas no cron
-(crontab -u root -l 2>/dev/null | grep -v "$BACKUP_SCRIPT"; echo "$CRON_JOB_BACKUP") | crontab -u root -
-(crontab -u root -l 2>/dev/null | grep -v "$UPDATE_SCRIPT"; echo "$CRON_JOB_UPDATE") | crontab -u root -
+# Adicionar cronjob para execução automática
+(crontab -l 2>/dev/null | grep -v "$SCRIPT_PATH"; echo "$CRON_JOB") | crontab -
+echo "Agendamento diário configurado para 04:00" | tee -a "$LOG_FILE"
 
-echo "Automação configurada com sucesso!"
-echo "Backup programado para 04:00 e atualização será feita após 5 minutos ou quando os containers pararem."
+echo "---- Configuração concluída! ----" | tee -a "$LOG_FILE"
 
