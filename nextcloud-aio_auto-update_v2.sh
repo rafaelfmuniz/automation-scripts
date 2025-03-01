@@ -59,7 +59,7 @@ msg_error() {
 
 install_cron() {
     msg_info "$CRON_INSTALL_INFO"
-    if ! command -v crontab &> /dev/null; then
+    if ! command -v crontab &>/dev/null; then
         if [[ -f /etc/debian_version ]]; then
             apt-get update && apt-get install -y cron &>/dev/null
         elif [[ -f /etc/redhat-release ]]; then
