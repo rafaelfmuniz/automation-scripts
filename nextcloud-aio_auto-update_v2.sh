@@ -38,12 +38,12 @@ header_info() {
 
 msg_info() {
     local msg="$1"
-    whiptail --title "Info" --msgbox "${msg}" 8 70 --timeout 1
+    whiptail --title "Info" --msgbox "${msg}" 10 70 --ok-button Ok --nocancel
 }
 
 msg_ok() {
     local msg="$1"
-    whiptail --title "Success" --msgbox "✓ ${msg}" 8 70 --timeout 1
+    whiptail --title "Success" --msgbox "✓ ${msg}" 10 70 --ok-button Ok --nocancel
 }
 
 msg_error() {
