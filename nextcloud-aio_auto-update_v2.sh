@@ -44,16 +44,16 @@ header_info() {
 
 msg_info() {
     local msg="$1"
-    printf "Informação: %s\n" "$msg"
+    whiptail --title "Informação" --msgbox "$msg" 10 70 --ok-button Ok --nocancel
 }
 
 msg_ok() {
     local msg="$1"
-    printf "Sucesso: ✓ %s\n" "$msg"
+    whiptail --title "Sucesso" --msgbox "✓ $msg" 10 70 --ok-button Ok --nocancel
 }
 
 msg_error() {
-    whiptail --title "Erro" --msgbox "✗ ${msg}" 10 70 --ok-button Ok --nocancel
+    whiptail --title "Erro" --msgbox "✗ $msg" 10 70 --ok-button Ok --nocancel
 }
 
 install_cron() {
