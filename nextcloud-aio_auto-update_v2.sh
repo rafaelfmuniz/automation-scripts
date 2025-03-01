@@ -7,21 +7,41 @@
 SCRIPT_NAME="nextcloud-aio_auto-update.sh"
 SCRIPT_PATH="/root/$SCRIPT_NAME"
 LOG_FILE="/var/log/nextcloud_aio_auto-update.log"
-SCHEDULE_TIME="04:00"
+SCHEDULE_TIME="04:00" # Default time
 CRON_JOB="0 4 * * * /root/$SCRIPT_NAME >> $LOG_FILE 2>&1"
 
+HEADER_TEXT="NextCloud AIO Auto Update\n-------------------------\n\nEste script irá configurar a atualização automática do Nextcloud AIO."
+INITIAL_INFO_TEXT="Este script irá configurar a atualização automática do Nextcloud AIO."
+CONFIRMATION_TEXT="Deseja iniciar a configuração da atualização automática do Nextcloud AIO?"
+CRON_INSTALL_INFO="Cron não encontrado. Instalando..."
+CRON_INSTALLED_OK="Cron instalado com sucesso."
+DISTRO_RECOG_ERROR="Distribuição não reconhecida. Instale o cron manualmente."
+CRON_INSTALL_FAILED="Falha na instalação do Cron. Configuração interrompida."
+LOCAL_SCRIPT_CREATE_INFO="Criando script de atualização local..."
+LOCAL_SCRIPT_CREATE_OK="Script de atualização local criado."
+LOCAL_SCRIPT_CREATE_FAILED="Falha ao criar script de atualização local. Configuração interrompida."
+SCHEDULE_INFO="Agendando atualização para as %s..."
+SCHEDULE_OK="Agendamento configurado para as %s."
+MANUAL_EXEC_PROMPT="A automação foi configurada para executar diariamente às %s.\n\nSe você deseja executar a atualização manualmente agora, execute o seguinte comando:\n\n/root/nextcloud-aio_auto-update.sh"
+CONFIG_COMPLETE_OK="Configuração concluída."
+CONFIG_CANCELLED_ERROR="Configuração cancelada pelo usuário."
+CONFIG_NOT_COMPLETED_ERROR="A configuração da atualização automática não foi concluída."
+SCHEDULE_TIME_PROMPT="Informe a hora desejada para agendar a atualização automática (formato HH:MM, ex: 03:30):"
+MANUAL_EXEC_CONFIRM_PROMPT="Deseja executar o script de atualização manualmente agora para testar a configuração?"
+
+
 header_info() {
-    whiptail --title "NextCloud AIO Auto Update" --msgbox "NextCloud AIO Auto Update\n-------------------------\n\nEste script irá configurar a atualização automática do Nextcloud AIO." 12 70 --ok-button Ok --nocancel
+    whiptail --title "NextCloud AIO Auto Update" --msgbox "$HEADER_TEXT" 12 70 --ok-button Ok --nocancel
 }
 
 msg_info() {
     local msg="$1"
-    whiptail --title "Info" --msgbox "${msg}" 10 70 --ok-button Ok --nocancel
+    whiptail --title "Info" --infobox "${msg}" 8 70 --timeout 2
 }
 
 msg_ok() {
     local msg="$1"
-    whiptail --title "Success" --msgbox "✓ ${msg}" 10 70 --ok-button Ok --nocancel
+    whiptail --title "Success" --infobox "✓ ${msg}" 8 70 --timeout 2
 }
 
 msg_error() {
@@ -30,23 +50,28 @@ msg_error() {
 }
 
 install_cron() {
-    msg_info "Cron não encontrado. Instalando..."
-    if [[ -f /etc/debian_version ]]; then
-        apt-get update && apt-get install -y cron &>/dev/null
-    elif [[ -f /etc/redhat-release ]]; then
-        yum install -y cron &>/dev/null && systemctl enable crond &>/dev/null && systemctl start crond &>/dev/null
-    elif [[ -f /etc/alpine-release ]]; then
-        apk update && apk add cron &>/dev/null && rc-update add cron default &>/dev/null && rc-service cron start &>/dev/null
+    msg_info "$CRON_INSTALL_INFO"
+    if ! command -v crontab &> /dev/null; then
+        if [[ -f /etc/debian_version ]]; then
+            apt-get update && apt-get install -y cron &>/dev/null
+        elif [[ -f /etc/redhat-release ]]; then
+            yum install -y cron &>/dev/null && systemctl enable crond &>/dev/null && systemctl start crond &>/dev/null
+        elif [[ -f /etc/alpine-release ]]; then
+            apk update && apk add cron &>/dev/null && rc-update add cron default &>/dev/null && rc-service cron start &>/dev/null
+        else
+            msg_error "$DISTRO_RECOG_ERROR"
+            return 1
+        fi
+        msg_ok "$CRON_INSTALLED_OK"
+        return 0
     else
-        msg_error "Distribuição não reconhecida. Instale o cron manualmente."
-        return 1
+        msg_ok "Cron já está instalado."
+        return 0
     fi
-    msg_ok "Cron instalado com sucesso."
-    return 0
 }
 
 create_local_script() {
-    msg_info "Criando script de atualização local..."
+    msg_info "$LOCAL_SCRIPT_CREATE_INFO"
     cat << "EOF" > "$SCRIPT_PATH"
 #!/bin/bash
 
@@ -75,13 +100,16 @@ fi
 echo "\$(date) ---- Automação Nextcloud AIO concluída! ----" | tee -a "\$LOG_FILE"
 EOF
     chmod +x "$SCRIPT_PATH"
-    msg_ok "Script de atualização local criado."
+    msg_ok "$LOCAL_SCRIPT_CREATE_OK"
+    return 0
 }
 
 schedule_cronjob() {
-    msg_info "Agendando atualização para as $SCHEDULE_TIME..."
+    msg_info "$(printf "$SCHEDULE_INFO" "$SCHEDULE_TIME")"
+    CRON_JOB="0 $(echo "$SCHEDULE_TIME" | cut -d':' -f1) * * * /root/$SCRIPT_NAME >> $LOG_FILE 2>&1"
     (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
-    msg_ok "Agendamento configurado para as $SCHEDULE_TIME."
+    msg_ok "$(printf "$SCHEDULE_OK" "$SCHEDULE_TIME")"
+    return 0
 }
 
 
@@ -89,25 +117,20 @@ start_routines() {
     header_info
 
     # Verificar se o cron está instalado
-    if ! command -v crontab &> /dev/null; then
-        if ! install_cron; then
-            msg_error "Falha na instalação do Cron. Configuração interrompida."
-            return 1
-        fi
+    if ! install_cron; then
+        msg_error "$CRON_INSTALL_FAILED"
+        return 1
     fi
 
     # Criar script local
     if ! create_local_script; then
-        msg_error "Falha ao criar script de atualização local. Configuração interrompida."
+        msg_error "$LOCAL_SCRIPT_CREATE_FAILED"
         return 1
     fi
 
     # Agendar cronjob
     schedule_cronjob
 
-    # Mensagem final com instruções para execução manual
-    whiptail --title "Concluído" --msgbox "A automação foi configurada para executar diariamente às $SCHEDULE_TIME.\n\nSe você deseja executar a atualização manualmente agora, execute o seguinte comando:\n\n/root/nextcloud-aio_auto-update.sh" 18 75 --ok-button Ok --nocancel
-    msg_ok "Configuração concluída."
     return 0
 }
 
@@ -115,14 +138,36 @@ start_routines() {
 header_info
 
 # Pergunta de confirmação usando whiptail --yesno
-if whiptail --title "Confirmação" --yesno "Deseja iniciar a configuração da atualização automática do Nextcloud AIO?" 12 70 --defaultno; then
-    if start_routines; then
-        exit 0
-    else
-        msg_error "A configuração da atualização automática não foi concluída."
+if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --defaultno; then
+
+    # Pergunta pela hora de agendamento
+    SCHEDULE_TIME=$(whiptail --title "Agendamento" --inputbox "$SCHEDULE_TIME_PROMPT" 12 70 "$SCHEDULE_TIME" --ok-button Ok --cancel-button Cancel 3>&1 1>&2 2>&3)
+
+    if [[ $? -eq 1 ]]; then # Cancel pressed
+        msg_error "$CONFIG_CANCELLED_ERROR"
         exit 1
     fi
+
+    if ! start_routines; then
+        msg_error "$CONFIG_NOT_COMPLETED_ERROR"
+        exit 1
+    fi
+
+    # Mensagem final com instruções para execução manual e confirmação
+    MANUAL_EXEC_CONFIRM=$(whiptail --title "Execução Manual" --yesno "$(printf "$MANUAL_EXEC_PROMPT" "$SCHEDULE_TIME")\n\nDeseja executar o script de atualização manualmente agora?" 15 75 --defaultno)
+
+    if [[ "$MANUAL_EXEC_CONFIRM" == "0" ]]; then
+        msg_info "Executando script de atualização manual..."
+        /root/nextcloud-aio_auto-update.sh
+        msg_ok "Script de atualização manual concluído. Verifique o log em $LOG_FILE para detalhes."
+    fi
+
+    msg_ok "$CONFIG_COMPLETE_OK"
+
+    whiptail --title "Concluído" --msgbox "$(printf "$MANUAL_EXEC_PROMPT" "$SCHEDULE_TIME")" 15 75 --ok-button Ok --nocancel
+
+    exit 0
 else
-    msg_error "Configuração cancelada pelo usuário."
+    msg_error "$CONFIG_CANCELLED_ERROR"
     exit 1
 fi
