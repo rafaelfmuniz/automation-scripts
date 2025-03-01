@@ -44,12 +44,12 @@ header_info() {
 
 msg_info() {
     local msg="$1"
-    whiptail --title "Informação" --infobox "${msg}" 8 70 --timeout 2
+    echo "Informação: ${msg}"
 }
 
 msg_ok() {
     local msg="$1"
-    whiptail --title "Sucesso" --infobox "✓ ${msg}" 8 70 --timeout 2
+    echo "Sucesso: ✓ ${msg}"
 }
 
 msg_error() {
@@ -154,7 +154,6 @@ start_routines() {
 
     # Agendar cronjob
     schedule_cronjob
-    msg_info "Cronjob agendado com sucesso." # DEBUG - Added debug message
 
     return 0
 }
@@ -177,10 +176,9 @@ if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --default
         msg_error "$CONFIG_NOT_COMPLETED_ERROR"
         exit 1
     fi
-    msg_info "Rotinas de configuração iniciadas." # DEBUG - Added debug message
 
     # Pergunta se deseja executar a atualização manual (AGORA CORRETO)
-    MANUAL_EXEC_CONFIRM=$(whiptail --title "Execução Manual" --yesno "$FINAL_SCREEN_CONFIRM_PROMPT\n\n$(printf "$FINAL_SCREEN_INFO" "$SCHEDULE_TIME")" 18 75 --defaultno)
+    MANUAL_EXEC_CONFIRM=$(whiptail --title "Concluído" --yesno "$FINAL_SCREEN_CONFIRM_PROMPT\n\n$(printf "$FINAL_SCREEN_INFO" "$SCHEDULE_TIME")" 18 75 --defaultno)
 
     if [[ "$MANUAL_EXEC_CONFIRM" == "0" ]]; then
         msg_info "$MANUAL_UPDATE_RUNNING"
