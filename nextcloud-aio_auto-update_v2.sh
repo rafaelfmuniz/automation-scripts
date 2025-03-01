@@ -53,7 +53,6 @@ msg_ok() {
 }
 
 msg_error() {
-    local msg="$1"
     whiptail --title "Erro" --msgbox "✗ ${msg}" 10 70 --ok-button Ok --nocancel
 }
 
@@ -186,6 +185,7 @@ if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --default
     fi
     msg_info "Rotinas start_routines finalizadas." # DEBUG - start_routines finished
 
+    msg_info "Preparando para prompt de execução manual..." # DEBUG - Before manual exec prompt
     # Pergunta se deseja executar a atualização manual (AGORA CORRETO)
     MANUAL_EXEC_CONFIRM=$(whiptail --title "Concluído" --yesno "$FINAL_SCREEN_CONFIRM_PROMPT\n\n$(printf "$FINAL_SCREEN_INFO" "$SCHEDULE_TIME")" 18 75 --defaultno)
 
