@@ -177,8 +177,8 @@ if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --default
         exit 1
     fi
 
-    # Pergunta se deseja executar a atualização manual
-    MANUAL_EXEC_CONFIRM=$(whiptail --title "Execução Manual" --yesno "$RUN_MANUAL_UPDATE_PROMPT" 15 75 --defaultno)
+    # Pergunta se deseja executar a atualização manual (AGORA CORRETO)
+    MANUAL_EXEC_CONFIRM=$(whiptail --title "Execução Manual" --yesno "$FINAL_SCREEN_CONFIRM_PROMPT\n\n$(printf "$FINAL_SCREEN_INFO" "$SCHEDULE_TIME")" 18 75 --defaultno)
 
     if [[ "$MANUAL_EXEC_CONFIRM" == "0" ]]; then
         msg_info "$MANUAL_UPDATE_RUNNING"
@@ -187,14 +187,6 @@ if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --default
     fi
 
     msg_ok "$CONFIG_COMPLETE_OK"
-
-    FINAL_SCREEN_CONFIRM=$(whiptail --title "Concluído" --yesno "$(printf "$FINAL_SCREEN_CONFIRM_PROMPT")\n\n$(printf "$FINAL_SCREEN_INFO" "$SCHEDULE_TIME")" 18 75 --defaultno)
-
-    if [[ "$FINAL_SCREEN_CONFIRM" == "0" ]]; then
-        msg_info "$MANUAL_UPDATE_RUNNING"
-        /root/nextcloud-aio_auto-update.sh
-        msg_ok "$MANUAL_UPDATE_COMPLETED"
-    fi
 
     exit 0
 else
