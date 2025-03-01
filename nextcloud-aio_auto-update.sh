@@ -16,7 +16,8 @@ for i in "${!OPTIONS[@]}"; do
 done
 
 # Ler a escolha do usuário
-read -p "Digite o número da opção desejada: " CHOICE
+read -r -p "Digite o número da opção desejada: " CHOICE
+echo "$(date) Opção digitada: '$CHOICE'." | tee -a "$LOG_FILE"
 
 # Validar a escolha do usuário
 if [[ "$CHOICE" -lt 1 || "$CHOICE" -gt "${#OPTIONS[@]}" ]]; then
@@ -26,6 +27,7 @@ fi
 
 # Obter o horário selecionado
 SELECTED_OPTION="${OPTIONS[$((CHOICE-1))]}"
+echo "$(date) Opção selecionada: '$SELECTED_OPTION'." | tee -a "$LOG_FILE"
 
 # Converter a opção para o formato HH:MM
 case "$SELECTED_OPTION" in
@@ -41,7 +43,8 @@ case "$SELECTED_OPTION" in
 esac
 
 # Confirmar horário de agendamento
-read -p "Confirma o horário de agendamento $SCHEDULE_TIME? (s/n): " CONFIRM
+read -r -p "Confirma o horário de agendamento $SCHEDULE_TIME? (s/n): " CONFIRM
+echo "$(date) Confirmação digitada: '$CONFIRM'." | tee -a "$LOG_FILE"
 
 if [[ "$CONFIRM" != "s" ]]; then
     echo "$(date) [ERRO] Agendamento cancelado." | tee -a "$LOG_FILE"
