@@ -6,14 +6,39 @@ LOG_FILE="/var/log/nextcloud_aio_auto-update.log"
 
 echo "$(date) ---- Configurando automação Nextcloud AIO ----" | tee -a "$LOG_FILE"
 
-# Solicitar horário de agendamento
-read -p "Digite o horário de agendamento (HH:MM): " SCHEDULE_TIME
+# Horários predefinidos
+OPTIONS=("4am" "5am" "6am")
 
-# Verificar formato do horário
-if [[ ! "$SCHEDULE_TIME" =~ ^[0-2][0-9]:[0-5][0-9]$ ]]; then
-    echo "$(date) [ERRO] Formato inválido. O horário deve estar no formato HH:MM." | tee -a "$LOG_FILE"
+# Mostrar opções para o usuário
+echo "Escolha o horário de agendamento:"
+for i in "${!OPTIONS[@]}"; do
+    echo "$((i+1)). ${OPTIONS[$i]}"
+done
+
+# Ler a escolha do usuário
+read -p "Digite o número da opção desejada: " CHOICE
+
+# Validar a escolha do usuário
+if [[ "$CHOICE" -lt 1 || "$CHOICE" -gt "${#OPTIONS[@]}" ]]; then
+    echo "$(date) [ERRO] Opção inválida." | tee -a "$LOG_FILE"
     exit 1
 fi
+
+# Obter o horário selecionado
+SELECTED_OPTION="${OPTIONS[$((CHOICE-1))]}"
+
+# Converter a opção para o formato HH:MM
+case "$SELECTED_OPTION" in
+    "4am")
+        SCHEDULE_TIME="04:00"
+        ;;
+    "5am")
+        SCHEDULE_TIME="05:00"
+        ;;
+    "6am")
+        SCHEDULE_TIME="06:00"
+        ;;
+esac
 
 # Confirmar horário de agendamento
 read -p "Confirma o horário de agendamento $SCHEDULE_TIME? (s/n): " CONFIRM
