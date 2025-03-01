@@ -7,7 +7,7 @@
 SCRIPT_NAME="nextcloud-aio_auto-update.sh"
 SCRIPT_PATH="/root/$SCRIPT_NAME"
 LOG_FILE="/var/log/nextcloud_aio_auto-update.log"
-SCHEDULE_TIME="04:00" # Hora padrão
+SCHEDULE_TIME="04:00" # Hora padrão (fixo para 4am)
 CRON_JOB="0 4 * * * /root/$SCRIPT_NAME >> $LOG_FILE 2>&1"
 
 HEADER_TEXT="NextCloud AIO Auto Update\n-------------------------\n\nEste script irá configurar a atualização automática do Nextcloud AIO."
@@ -26,7 +26,7 @@ MANUAL_EXEC_PROMPT="A automação foi configurada para executar diariamente às 
 CONFIG_COMPLETE_OK="Configuração concluída."
 CONFIG_CANCELLED_ERROR="Configuração cancelada pelo usuário."
 CONFIG_NOT_COMPLETED_ERROR="A configuração da atualização automática não foi concluída."
-SCHEDULE_TIME_PROMPT="Informe a hora desejada para agendar a atualização automática (formato HH:MM, ex: 03:30):"
+SCHEDULE_TIME_PROMPT="Informe a hora desejada para agendar a atualização automática (formato HH:MM, ex: 03:30):" # No longer used
 MANUAL_EXEC_CONFIRM_PROMPT="Deseja executar o script de atualização manualmente agora para testar a configuração?"
 PREVIOUS_INSTALL_DETECTED="Uma instalação anterior do script foi detectada.\n\nPara evitar conflitos, o script anterior e o agendamento cron serão removidos.\n\nDeseja continuar e substituir a instalação anterior?"
 PREVIOUS_INSTALL_REMOVED="Instalação anterior e agendamento removidos."
@@ -132,11 +132,21 @@ remove_previous_installation() {
 }
 
 
-start_routines() {
-    msg_info "Iniciando rotinas de configuração..." # DEBUG - Start of start_routines
+# ==================================================================
+# Part 1: Check and Remove Previous Installation
+# ==================================================================
+check_and_remove_part() {
+    msg_info "Iniciando Parte 1: Verificação e Remoção de Instalação Anterior..." # DEBUG
+    remove_previous_installation
+    msg_info "Parte 1 concluída." # DEBUG
+}
 
-    # Verificar se existe instalação anterior
-    remove_previous_installation # Call remove_previous_installation directly
+
+# ==================================================================
+# Part 2: Install and Schedule
+# ==================================================================
+install_and_schedule_part() {
+    msg_info "Iniciando Parte 2: Instalação e Agendamento..." # DEBUG
 
     # Verificar se o cron está instalado
     msg_info "Verificando instalação do Cron..." # DEBUG - Before cron install check
@@ -154,49 +164,51 @@ start_routines() {
     fi
     msg_info "Script local criado." # DEBUG - After local script creation
 
-    # Agendar cronjob
-    msg_info "Agendando cronjob..." # DEBUG - Before cron schedule
+    # Agendar cronjob (fixed schedule to 4:00 AM)
+    msg_info "Agendando cronjob para 04:00..." # DEBUG - Before cron schedule
     schedule_cronjob
-    msg_info "Cronjob agendado." # DEBUG - After cron schedule
+    msg_info "Cronjob agendado para 04:00." # DEBUG - After cron schedule
 
-    msg_info "Rotinas de configuração completas." # DEBUG - End of start_routines
+    msg_info "Parte 2 concluída." # DEBUG
     return 0
 }
 
 
-header_info
+# ==================================================================
+# Part 3: Manual Execution Prompt
+# ==================================================================
+manual_execution_prompt_part() {
+    msg_info "Iniciando Parte 3: Prompt de Execução Manual..." # DEBUG
 
-# Pergunta de confirmação usando whiptail --yesno
-if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --defaultno; then
-    msg_info "Configuração iniciada pelo usuário." # DEBUG - Config started
-
-    # Pergunta pela hora de agendamento
-    SCHEDULE_TIME=$(whiptail --title "Agendamento" --inputbox "$SCHEDULE_TIME_PROMPT" 12 70 "$SCHEDULE_TIME" --ok-button Ok --cancel-button Cancel 3>&1 1>&2 2>&3)
-
-    if [[ $? -eq 1 ]]; then # Cancel pressed
-        msg_error "$CONFIG_CANCELLED_ERROR"
-        exit 1
-    fi
-    msg_info "Hora de agendamento definida: $SCHEDULE_TIME" # DEBUG - Schedule time set
-
-    if ! start_routines; then
-        msg_error "$CONFIG_NOT_COMPLETED_ERROR"
-        exit 1
-    fi
-    msg_info "Rotinas start_routines finalizadas." # DEBUG - start_routines finished
-
-    msg_info "Preparando para prompt de execução manual..." # DEBUG - Before manual exec prompt
-    # Simplified final whiptail prompt and redirection
-    MANUAL_EXEC_CONFIRM=$(whiptail --title "Concluído" --yesno "Deseja executar a atualização manual agora?" 18 75 --defaultno 2>/dev/null 1>&2)
-
-    msg_info "Prompt de execução manual exibido." # DEBUG - After manual exec prompt
+    # Pergunta se deseja executar a atualização manual
+    MANUAL_EXEC_CONFIRM=$(whiptail --title "Concluído" --yesno "$FINAL_SCREEN_CONFIRM_PROMPT\n\nA automação foi configurada para executar diariamente às 04:00." 18 75 --defaultno)
 
     if [[ "$MANUAL_EXEC_CONFIRM" == "0" ]]; then
         msg_info "$MANUAL_UPDATE_RUNNING"
         /root/nextcloud-aio_auto-update.sh
         msg_ok "$MANUAL_UPDATE_COMPLETED"
     fi
-    msg_info "Execução manual e tela final completas." # DEBUG - Manual exec and final screen finished
+    msg_info "Parte 3 concluída." # DEBUG
+}
+
+
+# ==================================================================
+# Main Script Execution Flow
+# ==================================================================
+
+header_info
+
+# Pergunta de confirmação inicial
+if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --defaultno; then
+    msg_info "Configuração iniciada pelo usuário." # DEBUG - Config started
+
+    check_and_remove_part # Execute Part 1
+    install_and_schedule_part # Execute Part 2
+
+    if ! manual_execution_prompt_part; then # Execute Part 3 and check for errors
+        msg_error "$CONFIG_NOT_COMPLETED_ERROR"
+        exit 1
+    fi
 
     msg_ok "$CONFIG_COMPLETE_OK"
     msg_info "Configuração completamente finalizada." # DEBUG - Config completely finished
