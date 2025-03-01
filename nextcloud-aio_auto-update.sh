@@ -8,14 +8,18 @@ echo "$(date) ---- Configurando automação Nextcloud AIO ----" | tee -a "$LOG_F
 
 SCHEDULE_TIME=""
 while [[ -z "$SCHEDULE_TIME" ]]; do
+    echo "$(date) Iniciando loop de agendamento." | tee -a "$LOG_FILE"
     read -p "Digite o horário de agendamento (HH:MM): " SCHEDULE_TIME
+    echo "$(date) Horário digitado: '$SCHEDULE_TIME'." | tee -a "$LOG_FILE"
+
     if [[ ! "$SCHEDULE_TIME" =~ ^[0-2][0-9]:[0-5][0-9]$ ]]; then
-        echo "Formato inválido. Digite o horário (HH:MM)."
+        echo "$(date) Formato inválido. Digite o horário (HH:MM)." | tee -a "$LOG_FILE"
         SCHEDULE_TIME=""
         continue
     fi
 
     read -p "Confirma o horário de agendamento $SCHEDULE_TIME? (s/n): " CONFIRM
+    echo "$(date) Confirmação digitada: '$CONFIRM'." | tee -a "$LOG_FILE"
     if [[ "$CONFIRM" != "s" ]]; then
         SCHEDULE_TIME=""
     fi
@@ -64,6 +68,7 @@ echo "$(date) Agendamento configurado para $SCHEDULE_TIME" | tee -a "$LOG_FILE"
 
 # Execução manual inicial
 read -p "Deseja executar a atualização agora? (s/n): " RUN_NOW
+echo "$(date) Resposta da execução manual: '$RUN_NOW'." | tee -a "$LOG_FILE"
 if [[ "$RUN_NOW" == "s" ]]; then
     echo "$(date) Executando atualização manual..." | tee -a "$LOG_FILE"
     "$SCRIPT_PATH"
