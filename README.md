@@ -29,7 +29,7 @@ Este script automatiza a atualização do Nextcloud AIO (All-in-One) em um servi
     * Execute o seguinte comando:
 
         ```bash
-        curl -sL https://raw.githubusercontent.com/rafaelfmuniz/automation-scripts/main/nextcloud-aio_auto-update.sh | bash
+        curl -sL https://raw.githubusercontent.com/rafaelfmuniz/nextcloud-aio_auto-update/main/nextcloud-aio_auto-update.sh | bash
         ```
 
 2.  **Verifique a Instalação:**
