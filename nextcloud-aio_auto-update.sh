@@ -17,7 +17,12 @@ while True:
     print("2. 5am")
     print("3. 6am")
 
-    choice = input("Digite o número da opção desejada: ")
+    try:
+        choice = input("Digite o número da opção desejada: ")
+    except EOFError:
+        print("\\nEntrada inválida. Saindo.")
+        exit(1)
+
     if choice in ("1", "2", "3"):
         break
     else:
@@ -30,7 +35,12 @@ elif choice == "2":
 else:
     schedule_time = "06:00"
 
-confirm = input(f"Confirma o horário de agendamento {schedule_time}? (s/n): ")
+try:
+    confirm = input(f"Confirma o horário de agendamento {schedule_time}? (s/n): ")
+except EOFError:
+    print("\\nEntrada inválida. Saindo.")
+    exit(1)
+
 if confirm == "s":
     print(schedule_time)
 else:
