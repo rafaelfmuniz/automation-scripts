@@ -22,7 +22,7 @@ LOCAL_SCRIPT_CREATE_OK="Script de atualização local criado."
 LOCAL_SCRIPT_CREATE_FAILED="Falha ao criar script de atualização local. Configuração interrompida."
 SCHEDULE_INFO="Agendando atualização para as %s..."
 SCHEDULE_OK="Agendamento configurado para as %s."
-MANUAL_EXEC_PROMPT="A automação foi configurada para executar diariamente às %s.\n\nSe você deseja executar a atualização manualmente agora, execute o seguinte comando:\n\n/root/nextcloud-aio_auto-update.sh"
+MANUAL_EXEC_PROMPT="A automação foi configurada para executar diariamente às %s."
 CONFIG_COMPLETE_OK="Configuração concluída."
 CONFIG_CANCELLED_ERROR="Configuração cancelada pelo usuário."
 CONFIG_NOT_COMPLETED_ERROR="A configuração da atualização automática não foi concluída."
@@ -34,6 +34,9 @@ PREVIOUS_INSTALL_NOT_REMOVED="Remoção da instalação anterior cancelada."
 RUN_MANUAL_UPDATE_PROMPT="Deseja executar a atualização manualmente agora para verificar se está tudo funcionando corretamente?"
 MANUAL_UPDATE_RUNNING="Executando script de atualização manual..."
 MANUAL_UPDATE_COMPLETED="Script de atualização manual concluído. Verifique o log em $LOG_FILE para detalhes."
+FINAL_SCREEN_CONFIRM_PROMPT="A configuração da atualização automática foi concluída.\n\nDeseja executar o script de atualização manualmente agora?"
+FINAL_SCREEN_INFO="A automação foi configurada para executar diariamente às %s."
+
 
 header_info() {
     whiptail --title "NextCloud AIO Auto Update" --msgbox "$HEADER_TEXT" 12 70 --ok-button Ok --nocancel
@@ -41,12 +44,12 @@ header_info() {
 
 msg_info() {
     local msg="$1"
-    whiptail --title "Informação" --infobox "${msg}" 8 70 --timeout 2
+    whiptail --title "Informação" --msgbox "${msg}" 10 70 --ok-button Ok --nocancel
 }
 
 msg_ok() {
     local msg="$1"
-    whiptail --title "Sucesso" --infobox "✓ ${msg}" 8 70 --timeout 2
+    whiptail --title "Sucesso" --msgbox "✓ ${msg}" 10 70 --ok-button Ok --nocancel
 }
 
 msg_error() {
@@ -185,8 +188,13 @@ if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --default
 
     msg_ok "$CONFIG_COMPLETE_OK"
 
-    MANUAL_EXEC_COMMAND="/root/nextcloud-aio_auto-update.sh" # Define command for final message
-    whiptail --title "Concluído" --msgbox "$(printf "$MANUAL_EXEC_PROMPT" "$SCHEDULE_TIME")\n\nComando para execução manual:\n$MANUAL_EXEC_COMMAND" 18 75 --ok-button Ok --nocancel
+    FINAL_SCREEN_CONFIRM=$(whiptail --title "Concluído" --yesno "$(printf "$FINAL_SCREEN_CONFIRM_PROMPT")\n\n$(printf "$FINAL_SCREEN_INFO" "$SCHEDULE_TIME")" 18 75 --defaultno)
+
+    if [[ "$FINAL_SCREEN_CONFIRM" == "0" ]]; then
+        msg_info "$MANUAL_UPDATE_RUNNING"
+        /root/nextcloud-aio_auto-update.sh
+        msg_ok "$MANUAL_UPDATE_COMPLETED"
+    fi
 
     exit 0
 else
