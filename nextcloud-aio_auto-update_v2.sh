@@ -28,7 +28,9 @@ CONFIG_CANCELLED_ERROR="Configuração cancelada pelo usuário."
 CONFIG_NOT_COMPLETED_ERROR="A configuração da atualização automática não foi concluída."
 SCHEDULE_TIME_PROMPT="Informe a hora desejada para agendar a atualização automática (formato HH:MM, ex: 03:30):"
 MANUAL_EXEC_CONFIRM_PROMPT="Deseja executar o script de atualização manualmente agora para testar a configuração?"
-
+PREVIOUS_INSTALL_DETECTED="Uma instalação anterior do script foi detectada.\n\nPara evitar conflitos, o script anterior e o agendamento cron serão removidos.\n\nDeseja continuar e substituir a instalação anterior?"
+PREVIOUS_INSTALL_REMOVED="Instalação anterior e agendamento removidos."
+PREVIOUS_INSTALL_NOT_REMOVED="Remoção da instalação anterior cancelada."
 
 header_info() {
     whiptail --title "NextCloud AIO Auto Update" --msgbox "$HEADER_TEXT" 12 70 --ok-button Ok --nocancel
@@ -36,12 +38,12 @@ header_info() {
 
 msg_info() {
     local msg="$1"
-    whiptail --title "Info" --infobox "${msg}" 8 70 --timeout 2
+    whiptail --title "Info" --infobox "${msg}" 8 70
 }
 
 msg_ok() {
     local msg="$1"
-    whiptail --title "Success" --infobox "✓ ${msg}" 8 70 --timeout 2
+    whiptail --title "Success" --infobox "✓ ${msg}" 8 70
 }
 
 msg_error() {
@@ -112,9 +114,25 @@ schedule_cronjob() {
     return 0
 }
 
+remove_previous_installation() {
+    msg_info "Removendo instalação anterior..."
+    rm -f "$SCRIPT_PATH"
+    crontab -l 2>/dev/null | grep -v "$SCRIPT_NAME" | crontab -
+    msg_ok "$PREVIOUS_INSTALL_REMOVED"
+}
+
 
 start_routines() {
-    header_info
+
+    # Verificar se existe instalação anterior
+    if [[ -f "$SCRIPT_PATH" ]] || crontab -l 2>/dev/null | grep -q "$SCRIPT_NAME"; then
+        if whiptail --title "Atenção" --yesno "$PREVIOUS_INSTALL_DETECTED" 15 70 --defaultno; then
+            remove_previous_installation
+        else
+            msg_error "$PREVIOUS_INSTALL_NOT_REMOVED"
+            return 1
+        fi
+    fi
 
     # Verificar se o cron está instalado
     if ! install_cron; then
