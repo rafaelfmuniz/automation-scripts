@@ -120,94 +120,63 @@ schedule_cronjob() {
 }
 
 remove_previous_installation() {
-    msg_info "$PREVIOUS_INSTALL_DETECTED" # DEBUG - Message before previous install removal
     if [[ -f "$SCRIPT_PATH" ]] || crontab -l 2>/dev/null | grep -q "$SCRIPT_NAME"; then
+        msg_info "$PREVIOUS_INSTALL_DETECTED"
         msg_info "Removendo instalação anterior..."
         rm -f "$SCRIPT_PATH"
         crontab -l 2>/dev/null | grep -v "$SCRIPT_NAME" | crontab -
         msg_ok "$PREVIOUS_INSTALL_REMOVED"
     else
-        msg_info "Nenhuma instalação anterior detectada." # DEBUG - Message if no previous install
+        msg_info "Nenhuma instalação anterior detectada."
     fi
 }
 
 
-# ==================================================================
-# Part 1: Check and Remove Previous Installation
-# ==================================================================
-check_and_remove_part() {
-    msg_info "Iniciando Parte 1: Verificação e Remoção de Instalação Anterior..." # DEBUG
+start_routines() {
+
+    # Verificar se existe instalação anterior
     remove_previous_installation
-    msg_info "Parte 1 concluída." # DEBUG
-}
-
-
-# ==================================================================
-# Part 2: Install and Schedule
-# ==================================================================
-install_and_schedule_part() {
-    msg_info "Iniciando Parte 2: Instalação e Agendamento..." # DEBUG
 
     # Verificar se o cron está instalado
-    msg_info "Verificando instalação do Cron..." # DEBUG - Before cron install check
     if ! install_cron; then
         msg_error "$CRON_INSTALL_FAILED"
         return 1
     fi
-    msg_info "Cron instalado ou já presente." # DEBUG - After cron install check
 
     # Criar script local
-    msg_info "Criando script local..." # DEBUG - Before local script creation
     if ! create_local_script; then
         msg_error "$LOCAL_SCRIPT_CREATE_FAILED"
         return 1
     fi
-    msg_info "Script local criado." # DEBUG - After local script creation
 
     # Agendar cronjob (fixed schedule to 4:00 AM)
-    msg_info "Agendando cronjob para 04:00..." # DEBUG - Before cron schedule
     schedule_cronjob
-    msg_info "Cronjob agendado para 04:00." # DEBUG - After cron schedule
 
-    msg_info "Parte 2 concluída." # DEBUG
     return 0
 }
 
-
-# ==================================================================
-# Part 3: Manual Execution Prompt (Simplified for Debugging)
-# ==================================================================
-manual_execution_prompt_part() {
-    msg_info "Iniciando Parte 3: Prompt de Execução Manual..." # DEBUG
-    msg_info "Antes do whiptail msgbox..." # DEBUG - Before whiptail call
-
-    whiptail --msgbox "Configuração concluída. Deseja executar a atualização manual agora?" 15 60
-
-    msg_info "Depois do whiptail msgbox..." # DEBUG - After whiptail call
-    msg_info "Parte 3 concluída." # DEBUG
-}
-
-
-# ==================================================================
-# Main Script Execution Flow
-# ==================================================================
 
 header_info
 
 # Pergunta de confirmação inicial
 if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --defaultno; then
-    msg_info "Configuração iniciada pelo usuário." # DEBUG - Config started
+    msg_info "Configuração iniciada."
 
-    check_and_remove_part # Execute Part 1
-    install_and_schedule_part # Execute Part 2
-
-    if ! manual_execution_prompt_part; then # Execute Part 3 and check for errors
+    if ! start_routines; then
         msg_error "$CONFIG_NOT_COMPLETED_ERROR"
         exit 1
     fi
 
+    # Pergunta se deseja executar a atualização manual
+    MANUAL_EXEC_CONFIRM=$(whiptail --title "Concluído" --yesno "$FINAL_SCREEN_CONFIRM_PROMPT\n\nA automação foi configurada para executar diariamente às 04:00." 18 75 --defaultno)
+
+    if [[ "$MANUAL_EXEC_CONFIRM" == "0" ]]; then
+        msg_info "$MANUAL_UPDATE_RUNNING"
+        /root/nextcloud-aio_auto-update.sh
+        msg_ok "$MANUAL_UPDATE_COMPLETED"
+    fi
+
     msg_ok "$CONFIG_COMPLETE_OK"
-    msg_info "Configuração completamente finalizada." # DEBUG - Config completely finished
 
     exit 0
 else
