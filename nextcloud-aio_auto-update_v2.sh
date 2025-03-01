@@ -31,6 +31,9 @@ MANUAL_EXEC_CONFIRM_PROMPT="Deseja executar o script de atualização manualment
 PREVIOUS_INSTALL_DETECTED="Uma instalação anterior do script foi detectada.\n\nPara evitar conflitos, o script anterior e o agendamento cron serão removidos.\n\nDeseja continuar e substituir a instalação anterior?"
 PREVIOUS_INSTALL_REMOVED="Instalação anterior e agendamento removidos."
 PREVIOUS_INSTALL_NOT_REMOVED="Remoção da instalação anterior cancelada."
+RUN_MANUAL_UPDATE_PROMPT="Deseja executar a atualização manualmente agora para verificar se está tudo funcionando corretamente?"
+MANUAL_UPDATE_RUNNING="Executando script de atualização manual..."
+MANUAL_UPDATE_COMPLETED="Script de atualização manual concluído. Verifique o log em $LOG_FILE para detalhes."
 
 header_info() {
     whiptail --title "NextCloud AIO Auto Update" --msgbox "$HEADER_TEXT" 12 70 --ok-button Ok --nocancel
@@ -115,40 +118,53 @@ schedule_cronjob() {
 }
 
 remove_previous_installation() {
-    msg_info "Removendo instalação anterior..."
+    msg_info "Iniciando remove_previous_installation..." # DEBUG
+    msg_info "Removendo script anterior: rm -f $SCRIPT_PATH" # DEBUG
     rm -f "$SCRIPT_PATH"
+    msg_info "Removendo agendamento anterior do cron..." # DEBUG
     crontab -l 2>/dev/null | grep -v "$SCRIPT_NAME" | crontab -
     msg_ok "$PREVIOUS_INSTALL_REMOVED"
+    msg_info "Finalizando remove_previous_installation." # DEBUG
 }
 
 
 start_routines() {
+    msg_info "Iniciando start_routines..." # DEBUG
 
     # Verificar se existe instalação anterior
     if [[ -f "$SCRIPT_PATH" ]] || crontab -l 2>/dev/null | grep -q "$SCRIPT_NAME"; then
+        msg_info "Instalação anterior detectada." # DEBUG
         if whiptail --title "Atenção" --yesno "$PREVIOUS_INSTALL_DETECTED" 15 70 --defaultno; then
+            msg_info "Usuário confirmou remoção da instalação anterior." # DEBUG
             remove_previous_installation
         else
             msg_error "$PREVIOUS_INSTALL_NOT_REMOVED"
+            msg_info "Usuário cancelou remoção da instalação anterior." # DEBUG
             return 1
         fi
+    else
+        msg_info "Nenhuma instalação anterior detectada." # DEBUG
     fi
 
     # Verificar se o cron está instalado
     if ! install_cron; then
         msg_error "$CRON_INSTALL_FAILED"
+        msg_info "Falha na instalação do cron." # DEBUG
         return 1
     fi
 
     # Criar script local
     if ! create_local_script; then
         msg_error "$LOCAL_SCRIPT_CREATE_FAILED"
+        msg_info "Falha na criação do script local." # DEBUG
         return 1
     fi
 
     # Agendar cronjob
     schedule_cronjob
+    msg_info "Agendamento do cronjob concluído." # DEBUG
 
+    msg_info "Finalizando start_routines." # DEBUG
     return 0
 }
 
@@ -157,35 +173,42 @@ header_info
 
 # Pergunta de confirmação usando whiptail --yesno
 if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --defaultno; then
+    msg_info "Usuário iniciou a configuração." # DEBUG
 
     # Pergunta pela hora de agendamento
     SCHEDULE_TIME=$(whiptail --title "Agendamento" --inputbox "$SCHEDULE_TIME_PROMPT" 12 70 "$SCHEDULE_TIME" --ok-button Ok --cancel-button Cancel 3>&1 1>&2 2>&3)
 
     if [[ $? -eq 1 ]]; then # Cancel pressed
         msg_error "$CONFIG_CANCELLED_ERROR"
+        msg_info "Usuário cancelou a configuração da hora." # DEBUG
         exit 1
     fi
+    msg_info "Hora de agendamento definida para: $SCHEDULE_TIME" # DEBUG
 
     if ! start_routines; then
         msg_error "$CONFIG_NOT_COMPLETED_ERROR"
+        msg_info "start_routines falhou." # DEBUG
         exit 1
     fi
+    msg_info "start_routines concluído com sucesso." # DEBUG
 
-    # Mensagem final com instruções para execução manual e confirmação
-    MANUAL_EXEC_CONFIRM=$(whiptail --title "Execução Manual" --yesno "$(printf "$MANUAL_EXEC_PROMPT" "$SCHEDULE_TIME")\n\nDeseja executar o script de atualização manualmente agora?" 15 75 --defaultno)
+    # Pergunta se deseja executar a atualização manual
+    MANUAL_EXEC_CONFIRM=$(whiptail --title "Execução Manual" --yesno "$RUN_MANUAL_UPDATE_PROMPT" 15 75 --defaultno)
 
     if [[ "$MANUAL_EXEC_CONFIRM" == "0" ]]; then
-        msg_info "Executando script de atualização manual..."
+        msg_info "$MANUAL_UPDATE_RUNNING"
         /root/nextcloud-aio_auto-update.sh
-        msg_ok "Script de atualização manual concluído. Verifique o log em $LOG_FILE para detalhes."
+        msg_ok "$MANUAL_UPDATE_COMPLETED"
     fi
 
     msg_ok "$CONFIG_COMPLETE_OK"
 
     whiptail --title "Concluído" --msgbox "$(printf "$MANUAL_EXEC_PROMPT" "$SCHEDULE_TIME")" 15 75 --ok-button Ok --nocancel
+    msg_info "Configuração finalizada." # DEBUG
 
     exit 0
 else
     msg_error "$CONFIG_CANCELLED_ERROR"
+    msg_info "Usuário cancelou a configuração inicial." # DEBUG
     exit 1
 fi
