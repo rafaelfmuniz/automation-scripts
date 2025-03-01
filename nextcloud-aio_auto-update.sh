@@ -3,46 +3,35 @@
 SCRIPT_NAME="nextcloud-aio_auto-update.sh"
 SCRIPT_PATH="/root/$SCRIPT_NAME"
 LOG_FILE="/var/log/nextcloud_aio_auto-update.log"
+PYTHON_SCRIPT="/tmp/get_schedule_time.py"
 
 echo "$(date) ---- Configurando automação Nextcloud AIO ----" | tee -a "$LOG_FILE"
 
-# Verificar se o terminal é interativo
-if [[ ! -t 0 ]]; then
-    echo "$(date) [ERRO] Este script requer um terminal interativo." | tee -a "$LOG_FILE"
+# Criar script Python
+cat << 'EOF' > "$PYTHON_SCRIPT"
+#!/usr/bin/env python3
+
+import re
+
+while True:
+    schedule_time = input("Digite o horário de agendamento (HH:MM): ")
+    if re.match(r"^[0-2][0-9]:[0-5][0-9]$", schedule_time):
+        confirm = input(f"Confirma o horário de agendamento {schedule_time}? (s/n): ")
+        if confirm == "s":
+            print(schedule_time)
+            break
+    else:
+        print("Formato inválido. Digite o horário (HH:MM).")
+EOF
+
+chmod +x "$PYTHON_SCRIPT"
+
+SCHEDULE_TIME="$("$PYTHON_SCRIPT")"
+
+if [[ -z "$SCHEDULE_TIME" ]]; then
+    echo "$(date) [ERRO] Falha ao obter o horário de agendamento." | tee -a "$LOG_FILE"
     exit 1
 fi
-
-SCHEDULE_TIME=""
-while [[ -z "$SCHEDULE_TIME" ]]; do
-    echo "$(date) Iniciando loop de agendamento." | tee -a "$LOG_FILE"
-    # Configurar o terminal para leitura de entrada
-    stty raw -echo
-
-    read -r -p "Digite o horário de agendamento (HH:MM): " SCHEDULE_TIME
-    echo "$(date) Horário digitado: '$SCHEDULE_TIME'." | tee -a "$LOG_FILE"
-
-    # Restaurar configurações do terminal
-    stty -raw echo
-
-    if [[ ! "$SCHEDULE_TIME" =~ ^[0-2][0-9]:[0-5][0-9]$ ]]; then
-        echo "$(date) Formato inválido. Digite o horário (HH:MM)." | tee -a "$LOG_FILE"
-        SCHEDULE_TIME=""
-        continue
-    fi
-
-    # Configurar o terminal para leitura de entrada
-    stty raw -echo
-
-    read -r -p "Confirma o horário de agendamento $SCHEDULE_TIME? (s/n): " CONFIRM
-    echo "$(date) Confirmação digitada: '$CONFIRM'." | tee -a "$LOG_FILE"
-
-    # Restaurar configurações do terminal
-    stty -raw echo
-
-    if [[ "$CONFIRM" != "s" ]]; then
-        SCHEDULE_TIME=""
-    fi
-done
 
 SCHEDULE_HOUR=$(echo "$SCHEDULE_TIME" | cut -d ':' -f 1)
 SCHEDULE_MINUTE=$(echo "$SCHEDULE_TIME" | cut -d ':' -f 2)
@@ -86,15 +75,8 @@ echo "$(date) Script salvo em $SCRIPT_PATH" | tee -a "$LOG_FILE"
 echo "$(date) Agendamento configurado para $SCHEDULE_TIME" | tee -a "$LOG_FILE"
 
 # Execução manual inicial
-# Configurar o terminal para leitura de entrada
-stty raw -echo
-
 read -r -p "Deseja executar a atualização agora? (s/n): " RUN_NOW
 echo "$(date) Resposta da execução manual: '$RUN_NOW'." | tee -a "$LOG_FILE"
-
-# Restaurar configurações do terminal
-stty -raw echo
-
 if [[ "$RUN_NOW" == "s" ]]; then
     echo "$(date) Executando atualização manual..." | tee -a "$LOG_FILE"
     "$SCRIPT_PATH"
