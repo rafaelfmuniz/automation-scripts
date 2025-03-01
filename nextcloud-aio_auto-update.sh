@@ -9,9 +9,11 @@ echo "$(date) ---- Configurando automação Nextcloud AIO ----" | tee -a "$LOG_F
 SCHEDULE_TIME=""
 while [[ -z "$SCHEDULE_TIME" ]]; do
     read -p "Digite o horário de agendamento (HH:MM): " SCHEDULE_TIME
-    while [[ ! "$SCHEDULE_TIME" =~ ^[0-2][0-9]:[0-5][0-9]$ ]]; do
-        read -p "Formato inválido. Digite o horário (HH:MM): " SCHEDULE_TIME
-    done
+    if [[ ! "$SCHEDULE_TIME" =~ ^[0-2][0-9]:[0-5][0-9]$ ]]; then
+        echo "Formato inválido. Digite o horário (HH:MM)."
+        SCHEDULE_TIME=""
+        continue
+    fi
 
     read -p "Confirma o horário de agendamento $SCHEDULE_TIME? (s/n): " CONFIRM
     if [[ "$CONFIRM" != "s" ]]; then
