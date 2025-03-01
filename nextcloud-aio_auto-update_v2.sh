@@ -44,12 +44,12 @@ header_info() {
 
 msg_info() {
     local msg="$1"
-    echo "Informação: ${msg}"
+    printf "Informação: %s\n" "$msg"
 }
 
 msg_ok() {
     local msg="$1"
-    echo "Sucesso: ✓ ${msg}"
+    printf "Sucesso: ✓ %s\n" "$msg"
 }
 
 msg_error() {
@@ -121,40 +121,46 @@ schedule_cronjob() {
 }
 
 remove_previous_installation() {
-    msg_info "Removendo instalação anterior..."
-    rm -f "$SCRIPT_PATH"
-    crontab -l 2>/dev/null | grep -v "$SCRIPT_NAME" | crontab -
-    msg_ok "$PREVIOUS_INSTALL_REMOVED"
+    msg_info "$PREVIOUS_INSTALL_DETECTED" # DEBUG - Message before previous install removal
+    if [[ -f "$SCRIPT_PATH" ]] || crontab -l 2>/dev/null | grep -q "$SCRIPT_NAME"; then
+        msg_info "Removendo instalação anterior..."
+        rm -f "$SCRIPT_PATH"
+        crontab -l 2>/dev/null | grep -v "$SCRIPT_NAME" | crontab -
+        msg_ok "$PREVIOUS_INSTALL_REMOVED"
+    else
+        msg_info "Nenhuma instalação anterior detectada." # DEBUG - Message if no previous install
+    fi
 }
 
 
 start_routines() {
+    msg_info "Iniciando rotinas de configuração..." # DEBUG - Start of start_routines
 
     # Verificar se existe instalação anterior
-    if [[ -f "$SCRIPT_PATH" ]] || crontab -l 2>/dev/null | grep -q "$SCRIPT_NAME"; then
-        if whiptail --title "Atenção" --yesno "$PREVIOUS_INSTALL_DETECTED" 15 70 --defaultno; then
-            remove_previous_installation
-        else
-            msg_error "$PREVIOUS_INSTALL_NOT_REMOVED"
-            return 1
-        fi
-    fi
+    remove_previous_installation # Call remove_previous_installation directly
 
     # Verificar se o cron está instalado
+    msg_info "Verificando instalação do Cron..." # DEBUG - Before cron install check
     if ! install_cron; then
         msg_error "$CRON_INSTALL_FAILED"
         return 1
     fi
+    msg_info "Cron instalado ou já presente." # DEBUG - After cron install check
 
     # Criar script local
+    msg_info "Criando script local..." # DEBUG - Before local script creation
     if ! create_local_script; then
         msg_error "$LOCAL_SCRIPT_CREATE_FAILED"
         return 1
     fi
+    msg_info "Script local criado." # DEBUG - After local script creation
 
     # Agendar cronjob
+    msg_info "Agendando cronjob..." # DEBUG - Before cron schedule
     schedule_cronjob
+    msg_info "Cronjob agendado." # DEBUG - After cron schedule
 
+    msg_info "Rotinas de configuração completas." # DEBUG - End of start_routines
     return 0
 }
 
@@ -163,6 +169,7 @@ header_info
 
 # Pergunta de confirmação usando whiptail --yesno
 if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --defaultno; then
+    msg_info "Configuração iniciada pelo usuário." # DEBUG - Config started
 
     # Pergunta pela hora de agendamento
     SCHEDULE_TIME=$(whiptail --title "Agendamento" --inputbox "$SCHEDULE_TIME_PROMPT" 12 70 "$SCHEDULE_TIME" --ok-button Ok --cancel-button Cancel 3>&1 1>&2 2>&3)
@@ -171,11 +178,13 @@ if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --default
         msg_error "$CONFIG_CANCELLED_ERROR"
         exit 1
     fi
+    msg_info "Hora de agendamento definida: $SCHEDULE_TIME" # DEBUG - Schedule time set
 
     if ! start_routines; then
         msg_error "$CONFIG_NOT_COMPLETED_ERROR"
         exit 1
     fi
+    msg_info "Rotinas start_routines finalizadas." # DEBUG - start_routines finished
 
     # Pergunta se deseja executar a atualização manual (AGORA CORRETO)
     MANUAL_EXEC_CONFIRM=$(whiptail --title "Concluído" --yesno "$FINAL_SCREEN_CONFIRM_PROMPT\n\n$(printf "$FINAL_SCREEN_INFO" "$SCHEDULE_TIME")" 18 75 --defaultno)
@@ -185,8 +194,10 @@ if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --default
         /root/nextcloud-aio_auto-update.sh
         msg_ok "$MANUAL_UPDATE_COMPLETED"
     fi
+    msg_info "Execução manual e tela final completas." # DEBUG - Manual exec and final screen finished
 
     msg_ok "$CONFIG_COMPLETE_OK"
+    msg_info "Configuração completamente finalizada." # DEBUG - Config completely finished
 
     exit 0
 else
