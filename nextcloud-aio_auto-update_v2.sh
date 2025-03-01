@@ -31,7 +31,7 @@ MANUAL_EXEC_CONFIRM_PROMPT="Deseja executar o script de atualização manualment
 PREVIOUS_INSTALL_DETECTED="Uma instalação anterior do script foi detectada.\n\nPara evitar conflitos, o script anterior e o agendamento cron serão removidos.\n\nDeseja continuar e substituir a instalação anterior?"
 PREVIOUS_INSTALL_REMOVED="Instalação anterior e agendamento removidos."
 PREVIOUS_INSTALL_NOT_REMOVED="Remoção da instalação anterior cancelada."
-RUN_MANUAL_UPDATE_PROMPT="Deseja executar a atualização manualmente agora para verificar se está tudo funcionando corretamente?"
+RUN_MANUAL_EXEC_PROMPT="Deseja executar a atualização manualmente agora para verificar se está tudo funcionando corretamente?"
 MANUAL_UPDATE_RUNNING="Executando script de atualização manual..."
 MANUAL_UPDATE_COMPLETED="Script de atualização manual concluído. Verifique o log em $LOG_FILE para detalhes."
 FINAL_SCREEN_CONFIRM_PROMPT="A configuração da atualização automática foi concluída.\n\nDeseja executar o script de atualização manualmente agora?"
@@ -175,19 +175,15 @@ install_and_schedule_part() {
 
 
 # ==================================================================
-# Part 3: Manual Execution Prompt
+# Part 3: Manual Execution Prompt (Simplified for Debugging)
 # ==================================================================
 manual_execution_prompt_part() {
     msg_info "Iniciando Parte 3: Prompt de Execução Manual..." # DEBUG
+    msg_info "Antes do whiptail msgbox..." # DEBUG - Before whiptail call
 
-    # Pergunta se deseja executar a atualização manual
-    MANUAL_EXEC_CONFIRM=$(whiptail --title "Concluído" --yesno "$FINAL_SCREEN_CONFIRM_PROMPT\n\nA automação foi configurada para executar diariamente às 04:00." 18 75 --defaultno)
+    whiptail --msgbox "Configuração concluída. Deseja executar a atualização manual agora?" 15 60
 
-    if [[ "$MANUAL_EXEC_CONFIRM" == "0" ]]; then
-        msg_info "$MANUAL_UPDATE_RUNNING"
-        /root/nextcloud-aio_auto-update.sh
-        msg_ok "$MANUAL_UPDATE_COMPLETED"
-    fi
+    msg_info "Depois do whiptail msgbox..." # DEBUG - After whiptail call
     msg_info "Parte 3 concluída." # DEBUG
 }
 
