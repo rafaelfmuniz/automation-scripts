@@ -112,4 +112,5 @@ if [[ "$CHOICE" == "0" ]]; then
     start_routines
 else
     msg_error "Configuração cancelada."
+    sleep 2 # Adicionado um pequeno atraso para melhor visualização
 fi
