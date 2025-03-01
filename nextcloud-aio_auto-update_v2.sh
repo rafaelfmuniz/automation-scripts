@@ -7,7 +7,7 @@
 SCRIPT_NAME="nextcloud-aio_auto-update.sh"
 SCRIPT_PATH="/root/$SCRIPT_NAME"
 LOG_FILE="/var/log/nextcloud_aio_auto-update.log"
-SCHEDULE_TIME="04:00" # Default time
+SCHEDULE_TIME="04:00" # Hora padrão
 CRON_JOB="0 4 * * * /root/$SCRIPT_NAME >> $LOG_FILE 2>&1"
 
 HEADER_TEXT="NextCloud AIO Auto Update\n-------------------------\n\nEste script irá configurar a atualização automática do Nextcloud AIO."
@@ -41,17 +41,17 @@ header_info() {
 
 msg_info() {
     local msg="$1"
-    whiptail --title "Info" --msgbox "${msg}" 10 70 --ok-button Ok --nocancel
+    whiptail --title "Informação" --msgbox "${msg}" 10 70 --ok-button Ok --nocancel
 }
 
 msg_ok() {
     local msg="$1"
-    whiptail --title "Success" --msgbox "✓ ${msg}" 10 70 --ok-button Ok --nocancel
+    whiptail --title "Sucesso" --msgbox "✓ ${msg}" 10 70 --ok-button Ok --nocancel
 }
 
 msg_error() {
     local msg="$1"
-    whiptail --title "Error" --msgbox "✗ ${msg}" 10 70 --ok-button Ok --nocancel
+    whiptail --title "Erro" --msgbox "✗ ${msg}" 10 70 --ok-button Ok --nocancel
 }
 
 install_cron() {
@@ -131,12 +131,14 @@ remove_previous_installation() {
 start_routines() {
     msg_info "Iniciando start_routines..." # DEBUG
 
+    msg_info "Verificando instalação anterior (inicio)..." # DEBUG
     # Verificar se existe instalação anterior
     if [[ -f "$SCRIPT_PATH" ]] || crontab -l 2>/dev/null | grep -q "$SCRIPT_NAME"; then
         msg_info "Instalação anterior detectada." # DEBUG
         if whiptail --title "Atenção" --yesno "$PREVIOUS_INSTALL_DETECTED" 15 70 --defaultno; then
             msg_info "Usuário confirmou remoção da instalação anterior." # DEBUG
             remove_previous_installation
+            msg_info "Remoção da instalação anterior concluída." # DEBUG
         else
             msg_error "$PREVIOUS_INSTALL_NOT_REMOVED"
             msg_info "Usuário cancelou remoção da instalação anterior." # DEBUG
@@ -145,24 +147,31 @@ start_routines() {
     else
         msg_info "Nenhuma instalação anterior detectada." # DEBUG
     fi
+    msg_info "Verificação instalação anterior (fim)." # DEBUG
 
+    msg_info "Verificando instalação do cron (inicio)..." # DEBUG
     # Verificar se o cron está instalado
     if ! install_cron; then
         msg_error "$CRON_INSTALL_FAILED"
         msg_info "Falha na instalação do cron." # DEBUG
         return 1
     fi
+    msg_info "Verificando instalação do cron (fim)." # DEBUG
 
+    msg_info "Criando script local (inicio)..." # DEBUG
     # Criar script local
     if ! create_local_script; then
         msg_error "$LOCAL_SCRIPT_CREATE_FAILED"
         msg_info "Falha na criação do script local." # DEBUG
         return 1
     fi
+    msg_info "Criando script local (fim)." # DEBUG
 
+    msg_info "Agendando cronjob (inicio)..." # DEBUG
     # Agendar cronjob
     schedule_cronjob
     msg_info "Agendamento do cronjob concluído." # DEBUG
+    msg_info "Agendando cronjob (fim)." # DEBUG
 
     msg_info "Finalizando start_routines." # DEBUG
     return 0
