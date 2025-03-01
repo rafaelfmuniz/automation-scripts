@@ -186,8 +186,10 @@ if whiptail --title "Confirmação" --yesno "$CONFIRMATION_TEXT" 12 70 --default
     msg_info "Rotinas start_routines finalizadas." # DEBUG - start_routines finished
 
     msg_info "Preparando para prompt de execução manual..." # DEBUG - Before manual exec prompt
-    # Pergunta se deseja executar a atualização manual (AGORA CORRETO)
-    MANUAL_EXEC_CONFIRM=$(whiptail --title "Concluído" --yesno "$FINAL_SCREEN_CONFIRM_PROMPT\n\n$(printf "$FINAL_SCREEN_INFO" "$SCHEDULE_TIME")" 18 75 --defaultno)
+    # Simplified final whiptail prompt and redirection
+    MANUAL_EXEC_CONFIRM=$(whiptail --title "Concluído" --yesno "Deseja executar a atualização manual agora?" 18 75 --defaultno 2>/dev/null 1>&2)
+
+    msg_info "Prompt de execução manual exibido." # DEBUG - After manual exec prompt
 
     if [[ "$MANUAL_EXEC_CONFIRM" == "0" ]]; then
         msg_info "$MANUAL_UPDATE_RUNNING"
