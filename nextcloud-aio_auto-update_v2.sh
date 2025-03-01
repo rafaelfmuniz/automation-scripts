@@ -10,35 +10,33 @@ LOG_FILE="/var/log/nextcloud_aio_auto-update.log"
 SCHEDULE_TIME="04:00"
 CRON_JOB="0 4 * * * /root/$SCRIPT_NAME >> $LOG_FILE 2>&1"
 
-# Cores e Formatação
-RD=$(echo "\033[01;31m")
-GN=$(echo "\033[1;92m")
-YW=$(echo "\033[33m")
-CL=$(echo "\033[m")
-BFR="\\r\\033[K"
-HOLD="-"
-CM="${GN}✓${CL}"
-CROSS="${RD}✗${CL}"
+# Cores e Formatação (Removido para whiptail)
+# RD=$(echo "\033[01;31m")
+# GN=$(echo "\033[1;92m")
+# YW=$(echo "\033[33m")
+# CL=$(echo "\033[m")
+# BFR="\\r\\033[K"
+# HOLD="-"
+# CM="${GN}✓${CL}"
+# CROSS="${RD}✗${CL}"
 
 header_info() {
-  clear
-  echo "NextCloud AIO Auto Update"
-  echo "-------------------------"
+  whiptail --title "NextCloud AIO Auto Update" --msgbox "NextCloud AIO Auto Update\n-------------------------" 10 60 --ok-button Ok --nocancel
 }
 
 msg_info() {
   local msg="$1"
-  echo -ne " ${HOLD} ${YW}${msg}..."
+  whiptail --title "Info" --msgbox " ${msg}..." 10 60 --ok-button Ok --nocancel
 }
 
 msg_ok() {
   local msg="$1"
-  echo -e "${BFR} ${CM} ${GN}${msg}${CL}"
+  whiptail --title "Success" --msgbox "✓ ${msg}" 10 60 --ok-button Ok --nocancel
 }
 
 msg_error() {
   local msg="$1"
-  echo -e "${BFR} ${CROSS} ${RD}${msg}${CL}"
+  whiptail --title "Error" --msgbox "✗ ${msg}" 10 60 --ok-button Ok --nocancel
 }
 
 start_routines() {
@@ -99,18 +97,17 @@ EOF
   msg_ok "Agendamento configurado."
 
   # Mensagem final com instruções para execução manual
-  whiptail --msgbox "A automação foi configurada para executar às 4 da manhã.\n\nSe você deseja executar a atualização manualmente agora, execute o seguinte comando:\n\n/root/nextcloud-aio_auto-update.sh" 15 60
-  msg_ok "Configuração concluída."
+  whiptail --title "Concluído" --msgbox "A automação foi configurada para executar às 4 da manhã.\n\nSe você deseja executar a atualização manualmente agora, execute o seguinte comando:\n/root/nextcloud-aio_auto-update.sh" 15 70 --ok-button Ok --nocancel
+  msg_ok "Configuração concluída." # Esta linha pode ser redundante dependendo do fluxo desejado
 }
 
 header_info
-echo -e "\nEste script irá configurar a atualização automática do Nextcloud AIO.\n"
+whiptail --title "Initial Information" --msgbox "\nEste script irá configurar a atualização automática do Nextcloud AIO.\n" 10 60 --ok-button Ok --nocancel
 
-CHOICE=$(whiptail --backtitle "Nextcloud AIO Auto Update" --title "Iniciar Configuração" --yesno "Deseja iniciar a configuração da atualização automática?" 10 60)
+CHOICE=$(whiptail --title "Confirmation" --yesno "Deseja iniciar a configuração da atualização automática?" 10 60 --defaultno)
 
 if [[ "$CHOICE" == "0" ]]; then
-    start_routines
+  start_routines
 else
-    msg_error "Configuração cancelada."
-    sleep 2 # Adicionado um pequeno atraso para melhor visualização
+  msg_error "Configuração cancelada."
 fi
