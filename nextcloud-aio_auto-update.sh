@@ -15,8 +15,14 @@ fi
 SCHEDULE_TIME=""
 while [[ -z "$SCHEDULE_TIME" ]]; do
     echo "$(date) Iniciando loop de agendamento." | tee -a "$LOG_FILE"
+    # Configurar o terminal para leitura de entrada
+    stty raw -echo
+
     read -r -p "Digite o horário de agendamento (HH:MM): " SCHEDULE_TIME
     echo "$(date) Horário digitado: '$SCHEDULE_TIME'." | tee -a "$LOG_FILE"
+
+    # Restaurar configurações do terminal
+    stty -raw echo
 
     if [[ ! "$SCHEDULE_TIME" =~ ^[0-2][0-9]:[0-5][0-9]$ ]]; then
         echo "$(date) Formato inválido. Digite o horário (HH:MM)." | tee -a "$LOG_FILE"
@@ -24,8 +30,15 @@ while [[ -z "$SCHEDULE_TIME" ]]; do
         continue
     fi
 
+    # Configurar o terminal para leitura de entrada
+    stty raw -echo
+
     read -r -p "Confirma o horário de agendamento $SCHEDULE_TIME? (s/n): " CONFIRM
     echo "$(date) Confirmação digitada: '$CONFIRM'." | tee -a "$LOG_FILE"
+
+    # Restaurar configurações do terminal
+    stty -raw echo
+
     if [[ "$CONFIRM" != "s" ]]; then
         SCHEDULE_TIME=""
     fi
@@ -73,8 +86,15 @@ echo "$(date) Script salvo em $SCRIPT_PATH" | tee -a "$LOG_FILE"
 echo "$(date) Agendamento configurado para $SCHEDULE_TIME" | tee -a "$LOG_FILE"
 
 # Execução manual inicial
+# Configurar o terminal para leitura de entrada
+stty raw -echo
+
 read -r -p "Deseja executar a atualização agora? (s/n): " RUN_NOW
 echo "$(date) Resposta da execução manual: '$RUN_NOW'." | tee -a "$LOG_FILE"
+
+# Restaurar configurações do terminal
+stty -raw echo
+
 if [[ "$RUN_NOW" == "s" ]]; then
     echo "$(date) Executando atualização manual..." | tee -a "$LOG_FILE"
     "$SCRIPT_PATH"
