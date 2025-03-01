@@ -3,33 +3,23 @@
 SCRIPT_NAME="nextcloud-aio_auto-update.sh"
 SCRIPT_PATH="/root/$SCRIPT_NAME"
 LOG_FILE="/var/log/nextcloud_aio_auto-update.log"
-PYTHON_SCRIPT="/tmp/get_schedule_time.py"
 
 echo "$(date) ---- Configurando automação Nextcloud AIO ----" | tee -a "$LOG_FILE"
 
-# Criar script Python
-cat << 'EOF' > "$PYTHON_SCRIPT"
-#!/usr/bin/env python3
+# Solicitar horário de agendamento
+read -p "Digite o horário de agendamento (HH:MM): " SCHEDULE_TIME
 
-import re
+# Verificar formato do horário
+if [[ ! "$SCHEDULE_TIME" =~ ^[0-2][0-9]:[0-5][0-9]$ ]]; then
+    echo "$(date) [ERRO] Formato inválido. O horário deve estar no formato HH:MM." | tee -a "$LOG_FILE"
+    exit 1
+fi
 
-while True:
-    schedule_time = input("Digite o horário de agendamento (HH:MM): ")
-    if re.match(r"^[0-2][0-9]:[0-5][0-9]$", schedule_time):
-        confirm = input(f"Confirma o horário de agendamento {schedule_time}? (s/n): ")
-        if confirm == "s":
-            print(schedule_time)
-            break
-    else:
-        print("Formato inválido. Digite o horário (HH:MM).")
-EOF
+# Confirmar horário de agendamento
+read -p "Confirma o horário de agendamento $SCHEDULE_TIME? (s/n): " CONFIRM
 
-chmod +x "$PYTHON_SCRIPT"
-
-SCHEDULE_TIME="$("$PYTHON_SCRIPT")"
-
-if [[ -z "$SCHEDULE_TIME" ]]; then
-    echo "$(date) [ERRO] Falha ao obter o horário de agendamento." | tee -a "$LOG_FILE"
+if [[ "$CONFIRM" != "s" ]]; then
+    echo "$(date) [ERRO] Agendamento cancelado." | tee -a "$LOG_FILE"
     exit 1
 fi
 
